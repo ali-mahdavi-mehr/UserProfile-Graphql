@@ -22,7 +22,7 @@ share/python-wheels/
 MANIFEST
 *.manifest
 *.spec
-
+.idea/
 pip-log.txt
 pip-delete-this-directory.txt
 htmlcov/

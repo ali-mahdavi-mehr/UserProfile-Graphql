@@ -2,18 +2,20 @@
 from typing import Union
 from fastapi import FastAPI
 import uvicorn
+from . import v1
+from strawberry.asgi import GraphQL
+from schemas import graph
 
 app = FastAPI()
+app.include_router(v1.users.router)
+app.include_router(v1.profile.router)
 
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
 
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
+graphql_app = GraphQL(graph.query.schema, graphiql=True)
+# app = FastAPI()
+app.add_route("/graphql", graphql_app)
+# app.add_websocket_route("/graphql", graphql_app)
 
 if __name__ == "__main__":
-    uvicorn.run("localhost", app)
+    uvicorn.run(app=app)
