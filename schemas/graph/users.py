@@ -3,7 +3,10 @@ from db.connect import get_db, db
 from typing import Any
 from schemas.user import ReadUser
 from schemas.profile import ProfileBase
-from typing import Union, List
+from typing import Union, List, Optional, Dict
+from pydantic import EmailStr
+from api.utills import hash_password
+from fastapi import HTTPException
 
 
 @strawberry.type
@@ -14,15 +17,8 @@ class RequestStatus:
 @strawberry.experimental.pydantic.type(ProfileBase, all_fields=True)
 class Profile:
     pass
-    # first_name:strawberry.auto
-    # last_name:strawberry.auto
-    # phone_number:strawberry.auto
-    # image:strawberry.auto
 
 
-
-# @strawberry.type
-# @strawberry.experimental.pydantic.type(model=ReadUser, all_fields=True)
 @strawberry.experimental.pydantic.type(model=ReadUser)
 class User():
     profile:strawberry.auto
@@ -36,6 +32,22 @@ class User():
 class Users:
     users: List[User]
     response_status:RequestStatus
+
+@strawberry.input
+class ProfileInput:
+    first_name:str = ""
+    last_name:str=""
+    phone_number:str= ""
+    image:str= ""
+
+@strawberry.input
+class UserInput:
+    username:str
+    email:str
+    password:str
+
+
+
 
 
 
@@ -106,8 +118,36 @@ async def get_user(username:str)->User:
 class UserQuery:
     get_user:User=strawberry.field(resolver=get_user)
     get_users:Users=strawberry.field(resolver=get_users)
-    
 
+async def validated_data(data:dict) -> dict:
+    data["password"] = hash_password(data["password"])
+    data["username"] = data["username"].lower()
+    data["email"] = data["email"].lower()
+    username_found = await db["users"].find_one({"username":data["username"]})
+    email_found = await db["users"].find_one({"email":data["email"]})
+
+    if username_found:
+        raise HTTPException(409, "Username Already taken by another user")
+
+    if email_found:
+        raise HTTPException(409, "Email Already taken by another user")
+
+    return data
+
+@strawberry.type
+class UserCreateMutation:
+    @strawberry.mutation
+    async def create_user(self, input:UserInput, profile:ProfileInput=None)->User:
+        data = input.__dict__
+        if profile:
+            data["profile"] = profile.__dict__
+            profile = Profile(**data["profile"])
+        data = await validated_data(data)
+        if data:
+            new_user = await db.users.insert_one(data)
+        user = User(username=input.username, email=input.email, profile=profile)
+
+        return user
 
 
 
