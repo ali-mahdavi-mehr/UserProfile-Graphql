@@ -13,9 +13,8 @@ app.include_router(v1.profile.router)
 
 
 graphql_app = GraphQL(graph.query.schema, graphiql=True)
-# app = FastAPI()
+
 app.add_route("/graphql", graphql_app)
-# app.add_websocket_route("/graphql", graphql_app)
 
 if __name__ == "__main__":
     uvicorn.run(app=app)
